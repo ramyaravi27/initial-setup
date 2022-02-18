@@ -583,4 +583,501 @@ div.code-editor {
       </form>
     </div>
     <!-- </div> -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    environmental.ts
+    
+    // This file can be replaced during build by using the `fileReplacements` array.
+// `ng build --prod` replaces `environment.ts` with `environment.prod.ts`.
+// The list of file replacements can be found in `angular.json`.
+
+export const environment = {
+  production: false,
+  isProduction: false,
+  // test_url:'http://192.168.7.108:8002',
+  swagg_url: 'http://192.168.7.200:8080',
+ swagss: 'http://192.168.7.53:5500',
+//swagss: 'http://192.168.6.200:7171',
+  // swagss:'http://192.168.7.210:3232',
+  // test_url:'http://192.168.7.110:8006',
+  demo_url: 'http://192.168.7.109:3001',
+  api_url: 'http://192.168.5.167:9898/nxgdccp',
+  directrc_url: 'http://192.168.5.167:9898/nxgdccp',
+  img_url: 'http://192.168.5.167:9898/nxgdccp',
+  imgsize: 1000000,
+  timelimit: 2000,
+  vmImageURL: 'http://192.168.5.167:9898/nxgdccp',
+  cloudeImageURL: 'https://obdam.s3.amazonaws.com',
+  mydocument: true
+};
+
+/*
+ * For easier debugging in development mode, you can import the following file
+ * to ignore zone related error stack frames such as `zone.run`, `zoneDelegate.invokeTask`.
+ *
+ * This import should be commented out in production mode because it will have a negative impact
+ * on performance if an error is thrown.
+ */
+// import 'zone.js/dist/zone-error';  // Included with Angular CLI.
+
+
+
+usrserviuces
+
+export class UserService {
+  users: any;
+  user: User;
+  forgetpassword: boolean;
+  profileTitle: string;
+  constructor(private apiService: ApiService, private jwtService: JwtService, private http: Http, private router: Router) { }
+
+  public currentUserSubject = new BehaviorSubject<User>(new User());
+  public currentUser = this.currentUserSubject.asObservable().distinctUntilChanged();
+
+  private isAuthenticatedSubject = new ReplaySubject<boolean>(1);
+  public isAuthenticated = this.isAuthenticatedSubject.asObservable();
+  private paramSource = new BehaviorSubject<any>('');
+  navItem$ = this.paramSource.asObservable();
+  clientMasterId: number = 0;
+
+  private clientUserSubject = new BehaviorSubject<Client>(new Client());
+  public clientUser = this.clientUserSubject.asObservable().distinctUntilChanged();
+
+
+  clearSession() {
+    this.jwtService.destroyToken();
+    this.jwtService.destroygetuserid();
+    this.currentUserSubject.next(new User());
+    this.isAuthenticatedSubject.next(false);
+    window.localStorage.clear();
+  }
+  changeNav(obj) {
+    this.paramSource.next(obj);
+  }
+  populate() {
+    console.log(this.jwtService.getToken(), window.localStorage['jwtToken'])
+    if (this.jwtService.getToken()) {
+      this.apiService.post('/Authentication/getsession', window.localStorage['jwtToken'])
+        .subscribe(
+          data => {
+            if (data) {
+              this.setAuth(data);
+            } else {
+              this.clientMasterId = 0;
+              this.clearSession();
+              window.localStorage.clear();
+              this.router.navigate(['/login']);
+            }
+          }, err => {
+            this.clientMasterId = 0;
+            this.clearSession();
+            window.localStorage.clear();
+            this.router.navigate(['/login']);
+          }
+        );
+    }
+  }
+  //Login Credentials
+  attemptAuth(credentials): Observable<User> {
+    return this.apiService.post('/Authentication/auth', credentials)
+      .map(
+        data => {
+          this.users = data;
+          this.setAuth(data);
+          // this.setdata(data.item.clientMasterId);
+          return data;
+        }
+      );
+  }
+
+  //Set Authentication
+  setAuth(user: User) {
+    console.log("user seta uth", user.token)
+
+    this.jwtService.saveToken(user.token);
+    this.jwtService.saveUserId(user.userid);
+
+    // Set current user data into observable
+    this.currentUserSubject.next(user);
+    this.isAuthenticatedSubject.next(true);
+  }
+  imageupload(files) {
+    console.log("data", files)
+    return this.apiService.post("/Imagegallery/upload", files)
+      .map(
+        data => {
+          console.log("maped", data)
+          // this.users = data;
+          // this.setAuth(data);
+          // this.setdata(data.item.clientMasterId);
+          return data
+        }
+      );
+
+  }
+
+  setClient(client: Client) {
+    // Set current user data into observable
+    this.clientUserSubject.next(client);
+  }
+  datacm: any;
+
+  getdata(ClientMasterId: any) {
+    return this.apiService.get(`/api/v1/client/getclientmasterbyid/${ClientMasterId}`)
+      .map(
+        data => {
+          if (data) {
+            this.datacm = data
+            this.setClient(this.datacm);
+            return data;
+          }
+        })
+  }
+//logoutstatus
+logoutstatus() {
+  return this.apiService.get("/Authentication/logout").map(res => { return res; });
+}
+//seadmin
+  //graph summary
+  dashboardsummery() {
+    return this.apiService.get("/Sadmin/summery/").map(res => { return res; });
+  }
+  //manageclient
+  manageclientlist() {
+    return this.apiService.get("/Sadmin/clientlist/").map(res => { return res; });
+
+  }
+  //manageinfo
+
+  manageinfo(clientid) {
+
+    return this.apiService.get(`/Sadmin/clientdashboard/${clientid}`).map(res => { return res; });
+  }
+
+  getdocdata(doccode: any) {
+    console.log("check doc code", `/Masterlibrary/doctobu1/${doccode}`)
+    return this.apiService.get(`/Masterlibrary/doctobu1/${doccode}`).map(res => { return res; })
+  }
+
+  downloadPDF(clientid,design) {
+    return this.apiService.get(`/Downloadfile/ActionButton/${clientid}/${design}/`).map(res => { return res; });
+  }
+  downloadPDFstructdoc(clientid,tablename) {
+    return this.apiService.getPDFFileFromServer(`/Downloadfile/pdfdownloadforstructureddoc/${clientid}/${tablename}`).map(res => { return res; });
+  }
+  downloadPDFstrucDOC(data) {
+    return this.apiService.postPDFFileFromServer(`/Downloadfile/structurepdfdownload/`, data).map(res => { return res; });
+  }
+
+  submit_masterdocname(value) {
+    return this.apiService.post(`/Managedocument/updatemasterdocname`, value).map(res => { return res; });
+  }
+  update_newpagename(value) {
+    return this.apiService.post(`/Managedocument/pagerename`, value).map(res => { return res; });
+  }
+
+  setdata(ClientMasterId: any) {
+    return this.apiService.get(`/api/v1/client/getclientmasterbyid/${ClientMasterId}`)
+      .subscribe(
+        data => {
+          // data.clientData = this.clientmaster
+          console.log(data)
+          this.setClient(data);
+          return data;
+        })
+  }
+
+
+
+  /* Super Admin - Client List - Statrt */
+  getClientListData() {
+    return this.apiService.get("/client/clientlist").map(res => { return res; });
+  }
+  Documentcode() {
+    return this.apiService.get("/Form/documentcode").map(res => { return res; });
+  }
+  Doccode() {
+    return this.apiService.get("/Masterlibrary/doccode/").map(res => { return res; });
+  }
+  getStagingtoProductionData() {
+    return this.apiService.get("/Masterlibrary/staging/").map(res => { return res; });
+  }
+  getCommonDoctoButable2Data() {
+    return this.apiService.get("/Masterlibrary/doctobu2/").map(res => { return res; });
+  }
+  
+  
+  
+  api services
+  
+  
+  import { Injectable } from '@angular/core';
+import { Headers, Http, Response, URLSearchParams, RequestOptions, ResponseContentType } from '@angular/http';
+import { Observable } from 'rxjs/Rx';
+import { environment } from '../../../environments/environment';
+import { JwtService } from './jwt.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+
+@Injectable()
+export class ApiService {
+  constructor(private http: Http, private https: HttpClient, private jwtService: JwtService) { }
+
+
+  private setHeaders(): Headers {
+    const headersConfig = {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+      'Accept': 'application/json'
+    };
+    if (this.jwtService.getToken()) {
+      headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+    }
+    // console.log(Headers);
+    return new Headers(headersConfig);
+  }
+
+  private setHeadersUpload(): Headers {
+    const headersConfig = {
+      // boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+      // 'Access-Control-Allow-Origin':'*',
+      'Content-Type': 'multipart/form-data',
+      'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+      'Accept': 'application/json'
+    };
+    if (this.jwtService.getToken()) {
+      headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+    }
+    console.log(Headers);
+    console.log(headersConfig);
+    return new Headers(headersConfig);
+  }
+
+  private formatErrors(error: any) {
+    //  console.log("err",error)
+    return Observable.throw(error.json());
+  }
+  private setHeaderDownload(): Headers {
+    const headersConfig = {
+      'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+      'Accept': 'application/json',
+      'Content-Type': 'application/zip',
+      // 'Accept': 'application/zip'
+        };
+        if (this.jwtService.getToken()) {
+          headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+        }
+        console.log(Headers);
+        return new Headers(headersConfig);
+      }
+      private setHeaderepubMDownload(): Headers {
+        const headersConfig = {
+          'Content-Type':'application/json',
+          'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+          'Accept': 'application/json',
+          
+      // 'Accept': 'application/zip'
+        };
+        if (this.jwtService.getToken()) {
+          headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+        }
+        console.log(Headers);
+        return new Headers(headersConfig);
+      }
+      private setHeaderPDF(): Headers {
+
+        const headersConfig = {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+          'Accept': 'application/json'
+          // 'Accept': 'application/zip'
+        };
+        if (this.jwtService.getToken()) {
+          headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+        }
+        console.log(Headers);
+        return new Headers(headersConfig);
+      }
+      private setHeaderPDFDownload(): Headers {
+        const headersConfig = {
+          'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+          'Accept': 'application/json',
+          'Content-Type': 'application/pdf',
+      // 'Accept': 'application/zip'
+        };
+        if (this.jwtService.getToken()) {
+          headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+        }
+        console.log(Headers);
+        return new Headers(headersConfig);
+      }
+      // private formatErrorss(error: any) {
+      //   //  console.log("err",error)
+      //    return Observable.throw(error.json());
+      // }
+      private setHeaderZIPDownload(): Headers {
+        const headersConfig = {
+          'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+          'Accept': 'application/json',
+          'Content-Type': 'application/zip',
+      // 'Accept': 'application/zip'
+        };
+        if (this.jwtService.getToken()) {
+          headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+        }
+        console.log(Headers);
+        return new Headers(headersConfig);
+      }
+      private setHeaderCSVDownload(): Headers {
+        const headersConfig = {
+          'X-CSRFToken': 'ERUGK3xXSn82hNZp85uRY2oFTNCaqA6y4iPGx8Aj0PtWxm7PXv7Bt1nKSOdfaVTA',
+          'Accept': 'application/json',
+          'Content-Type': 'application/csv',
+      // 'Accept': 'application/zip'
+        };
+        if (this.jwtService.getToken()) {
+          headersConfig['Authorization'] = `${this.jwtService.getToken()}`;
+        }
+        console.log(Headers);
+        return new Headers(headersConfig);
+      }
+      // private formatErrorss(error: any) {
+      //   //  console.log("err",error)
+      //    return Observable.throw(error.json());
+      // }
+ 
+      postPDFFileFromServer(path: string, body: Object = {}, params: URLSearchParams = new URLSearchParams()): Observable<any> {
+        return this.http.post(`${environment.swagss}${path}`, JSON.stringify(body), { responseType: ResponseContentType.Blob, headers: this.setHeaderPDF(), search: params })
+          .catch(this.formatErrors)
+          .map((res: Response) => res);
+      }
+    
+
+      get(path: string, params: URLSearchParams = new URLSearchParams()): Observable<any> {
+        return this.http.get(`${environment.swagss}${path}`, { headers: this.setHeaders(), search: params })
+        .catch(this.formatErrors)
+        .map((res: Response) => res.json());
+      }
+      
+      gett(path: string, params: URLSearchParams = new URLSearchParams()): Observable<any> {
+        return this.http.get(`${environment.demo_url}${path}`, { headers: this.setHeaders(), search: params })
+        .catch(this.formatErrors)
+        .map((res: Response) => res.json());
+      }
+      getFileFromServer(path: string, params: URLSearchParams = new URLSearchParams()): Observable<any> {
+        return this.http.get(`${environment.swagss}${path}`, {responseType: ResponseContentType.Blob, headers: this.setHeaderDownload(), search: params })
+        .catch(this.formatErrors)
+        .map((res: Response) => res);
+      }
+      getPDFFileFromServer(path: string, params: URLSearchParams = new URLSearchParams()): Observable<any> {
+        return this.http.get(`${environment.swagss}${path}`, {responseType: ResponseContentType.Blob, headers: this.setHeaderPDFDownload(), search: params })
+        .catch(this.formatErrors)
+        .map((res: Response) => res);
+      }
+      getzipfiledownload(path: string, params: URLSearchParams = new URLSearchParams()): Observable<any> {
+        return this.http.get(`${environment.swagss}${path}`, {responseType: ResponseContentType.Blob, headers: this.setHeaderZIPDownload(), search: params })
+        .catch(this.formatErrors)
+        .map((res: Response) => res);
+      }
+      getexportfiledownload(path: string, params: URLSearchParams = new URLSearchParams()): Observable<any> {
+        return this.http.get(`${environment.swagss}${path}`, {responseType: ResponseContentType.Blob, headers: this.setHeaderCSVDownload(), search: params })
+        .catch(this.formatErrors)
+        .map((res: Response) => res);
+      }
+
+        post(path: string, body: Object = {}): Observable<any> {
+            return this.http.post(
+            `${environment.swagss}${path}`,
+            JSON.stringify(body),
+            { headers: this.setHeaders() }
+            ).map((res: Response) => res.json())
+            .catch(this.formatErrors)
+        }
+        postepubmergedownload(path: string, body: Object = {}): Observable<any> {
+          return this.http.post(
+          `${environment.swagss}${path}`,
+          JSON.stringify(body),
+          { responseType: ResponseContentType.Blob,headers: this.setHeaderepubMDownload() }
+          ).map((res: Response) => res)
+          .catch(this.formatErrors)
+      }
+        postupload(path: string, body: Object = {}): Observable<any> {
+          return this.http.post(
+          `${environment.swagss}${path}`,
+          JSON.stringify(body),
+          { headers: this.setHeadersUpload() }
+          ).map((res: Response) => res.json())
+          .catch(this.formatErrors)
+      }
+       
+
+        put(path: string, body: Object = {}): Observable<any> {
+          return this.http.put(
+            `${environment.swagss}${path}`,
+            JSON.stringify(body),
+            { headers: this.setHeaders() }
+                  )
+                  .catch(this.formatErrors)
+                  .map((res: Response) => res.json());
+        }
+
+        delete(path: string, body: Object = {}): Observable<any> {
+          return this.http.delete(
+            `${environment.swagss}${path}`,
+            // JSON.stringify(body),
+            { headers: this.setHeaders() }
+                  )
+                  .catch(this.formatErrors)
+                  .map((res: Response) => res.json());
+        }
+
+
+}
+
+
+jwtservices
+
+import { Injectable } from '@angular/core';
+
+
+@Injectable()
+export class JwtService {
+     getToken(): String {
+        return window.localStorage['jwtToken'];
+      }
+
+      saveToken(token: String) {
+        window.localStorage['jwtToken'] = token;
+      } 
+
+      getUserAccountId(): String {
+        return window.localStorage['useraccountid'];
+      }
+
+      saveUserAccountId(useraccountid: number) {
+
+        window.localStorage['useraccountid'] = String(useraccountid);
+      }
+      destroyToken() {
+        window.localStorage.removeItem('jwtToken');
+      }
+      destroygetUserAccountId(){
+        window.localStorage.removeItem('useraccountid');
+      }
+
+      saveUserId(userid: number) {
+        window.localStorage['userid'] = String(userid);
+      }
+      destroygetuserid(){
+        window.localStorage.removeItem('userid');
+      }
+
+}
 
